@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papan Skor Tenis Meja (Ping Pong Scoreboard)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .score-font {
+            font-family: 'Teko', sans-serif;
+            line-height: 0.85;
+        }
+        .service-pulse {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between select-none">
+
+    <!-- Header Navigation & Status Bar -->
+    <header class="bg-slate-800/90 border-b border-slate-700/60 backdrop-blur sticky top-0 z-20 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl font-black flex items-center justify-center w-10 h-10 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid font-black text-xl">🏓</i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider text-slate-100 uppercase leading-none">Table Tennis Counter</h1>
+                    <p class="text-xs text-slate-400 font-medium">Papan Skor Tenis Meja Pro</p>
+                </div>
+            </div>
+
+            <!-- Settings Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700">
+                    <label for="matchFormat" class="text-xs text-slate-400 px-2 font-medium">Format:</label>
+                    <select id="matchFormat" onchange="changeMatchFormat(this.value)" class="bg-slate-800 text-xs text-emerald-400 font-bold rounded px-2 py-1 focus:outline-none cursor-pointer">
+                        <option value="3">Best of 3 (2 Set)</option>
+                        <option value="5" selected>Best of 5 (3 Set)</option>
+                        <option value="7">Best of 7 (4 Set)</option>
+                    </select>
+                </div>
+
+                <button onclick="toggleAudio()" id="audioBtn" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-slate-600">
+                    <i class="fa-solid fa-volume-high text-emerald-400" id="audioIcon"></i> Suara
+                </button>
+
+                <button onclick="openRulesModal()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-slate-600">
+                    <i class="fa-solid fa-circle-info text-blue-400"></i> Aturan
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Scoreboard Container -->
+    <main class="max-w-6xl w-full mx-auto p-3 sm:p-6 flex-grow flex flex-col justify-center gap-4">
+        
+        <!-- Game Banner Status -->
+        <div id="gameStatus" class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3 text-center flex justify-around items-center text-sm sm:text-base font-semibold shadow-inner">
+            <span id="setInfo" class="text-emerald-400 font-bold uppercase tracking-wider">Set 1</span>
+            <span id="deuceIndicator" class="hidden text-amber-400 font-black animate-pulse bg-amber-400/10 px-3 py-0.5 rounded-full border border-amber-400/30">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> KONDISI DEUCE (+2 Poin)
+            </span>
+            <span id="targetInfo" class="text-slate-400">Target Win: 3 Set</span>
+        </div>
+
+        <!-- Players Card Area -->
+        <div id="playersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 relative">
+
+            <!-- Player 1 Box (Red Theme) -->
+            <div id="p1Box" class="bg-gradient-to-br from-slate-800 to-rose-950/40 border-2 border-rose-500/50 rounded-3xl p-4 sm:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-300">
+                <!-- Service Indicator Tag -->
+                <div id="p1Service" class="absolute top-4 right-4 bg-amber-400 text-slate-950 font-black text-xs sm:text-sm px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 service-pulse">
+                    <i class="fa-solid fa-table-tennis-paddle-ball"></i> SERVIS
+                </div>
+
+                <!-- Player Header / Name -->
+                <div class="mb-4 pr-24">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="p1Name" value="Pemain 1" onchange="updatePlayerNames()" class="bg-transparent border-b border-transparent hover:border-rose-400 focus:border-rose-400 text-xl sm:text-2xl font-black text-rose-400 focus:outline-none transition w-full truncate" />
+                        <button onclick="document.getElementById('p1Name').focus()" class="text-slate-500 hover:text-slate-300 text-xs">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                    <!-- Won Sets Badges -->
+                    <div class="mt-2 flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1">Set Dimenangi:</span>
+                        <div id="p1SetBadges" class="flex gap-1">
+                            <!-- Badges generated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- P1 Score Display -->
+                <div class="my-2 text-center relative">
+                    <div id="p1Score" class="score-font text-8xl sm:text-9xl md:text-[11rem] font-bold text-slate-100 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+                        0
+                    </div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="grid grid-cols-4 gap-2 mt-2">
+                    <button onclick="adjustScore(1, -1)" class="col-span-1 bg-slate-700/80 hover:bg-slate-700 active:bg-slate-600 text-rose-300 font-bold py-3 sm:py-4 rounded-xl text-xl transition border border-slate-600 active:scale-95 flex items-center justify-center">
+                        -1
+                    </button>
+                    <button onclick="adjustScore(1, 1)" class="col-span-3 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-black py-3 sm:py-4 rounded-xl text-2xl sm:text-3xl transition shadow-lg shadow-rose-600/30 active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus text-lg"></i> POIN
+                    </button>
+                </div>
+            </div>
+
+            <!-- Player 2 Box (Blue Theme) -->
+            <div id="p2Box" class="bg-gradient-to-br from-slate-800 to-sky-950/40 border-2 border-sky-500/50 rounded-3xl p-4 sm:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-300">
+                <!-- Service Indicator Tag -->
+                <div id="p2Service" class="hidden absolute top-4 right-4 bg-amber-400 text-slate-950 font-black text-xs sm:text-sm px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 service-pulse">
+                    <i class="fa-solid fa-table-tennis-paddle-ball"></i> SERVIS
+                </div>
+
+                <!-- Player Header / Name -->
+                <div class="mb-4 pr-24">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="p2Name" value="Pemain 2" onchange="updatePlayerNames()" class="bg-transparent border-b border-transparent hover:border-sky-400 focus:border-sky-400 text-xl sm:text-2xl font-black text-sky-400 focus:outline-none transition w-full truncate" />
+                        <button onclick="document.getElementById('p2Name').focus()" class="text-slate-500 hover:text-slate-300 text-xs">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                    <!-- Won Sets Badges -->
+                    <div class="mt-2 flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1">Set Dimenangi:</span>
+                        <div id="p2SetBadges" class="flex gap-1">
+                            <!-- Badges generated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- P2 Score Display -->
+                <div class="my-2 text-center relative">
+                    <div id="p2Score" class="score-font text-8xl sm:text-9xl md:text-[11rem] font-bold text-slate-100 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+                        0
+                    </div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="grid grid-cols-4 gap-2 mt-2">
+                    <button onclick="adjustScore(2, -1)" class="col-span-1 bg-slate-700/80 hover:bg-slate-700 active:bg-slate-600 text-sky-300 font-bold py-3 sm:py-4 rounded-xl text-xl transition border border-slate-600 active:scale-95 flex items-center justify-center">
+                        -1
+                    </button>
+                    <button onclick="adjustScore(2, 1)" class="col-span-3 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-black py-3 sm:py-4 rounded-xl text-2xl sm:text-3xl transition shadow-lg shadow-sky-600/30 active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus text-lg"></i> POIN
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Quick Auxiliary Controls Bar -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="undoLastAction()" id="undoBtn" disabled class="bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold py-2 px-3 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-slate-600">
+                <i class="fa-solid fa-rotate-left"></i> Undo Poin
+            </button>
+            <button onclick="switchSides()" class="bg-slate-700/80 hover:bg-slate-700 text-slate-200 font-bold py-2 px-3 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-slate-600">
+                <i class="fa-solid fa-arrows-rotate"></i> Tukar Sisi Meja
+            </button>
+            <button onclick="randomizeServer()" class="bg-slate-700/80 hover:bg-slate-700 text-amber-400 font-bold py-2 px-3 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-slate-600">
+                <i class="fa-solid fa-coins"></i> Acak Servis (Toss)
+            </button>
+            <button onclick="confirmResetAll()" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-bold py-2 px-3 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-rose-800/50">
+                <i class="fa-solid fa-trash-can"></i> Reset Pertandingan
+            </button>
+        </div>
+
+        <!-- Point History Log Drawer -->
+        <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-3">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Catatan Riwayat Poin (Set Ini)
+                </span>
+                <span id="totalPointsCount" class="text-xs bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">Total: 0 Relai</span>
+            </div>
+            <div id="historyLog" class="flex gap-2 overflow-x-auto py-1 scrollbar-thin text-xs font-mono">
+                <span class="text-slate-500 italic text-xs py-1">Belum ada poin tercatat.</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800/80 py-3 text-center text-xs text-slate-500">
+        Papan Skor Tenis Meja Standar ITTF (11 Poin, Selisih 2 Saat Deuce)
+    </footer>
+
+    <!-- Winner Celebration Modal -->
+    <div id="winnerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-emerald-500/60 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl relative transform transition-all scale-100">
+            <div class="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/40 animate-bounce">
+                <i class="fa-solid fa-trophy text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-black text-slate-100 uppercase tracking-wide mb-1">Pertandingan Selesai!</h2>
+            <p id="winnerSubText" class="text-sm text-slate-400 mb-4">Selamat kepada pemenang</p>
+            
+            <div class="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 mb-6">
+                <h3 id="winnerName" class="text-3xl font-black text-emerald-400 mb-1">Pemain 1</h3>
+                <p id="finalScoreText" class="text-sm font-semibold text-slate-300">Skor Akhir Set: 3 - 1</p>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="resetMatch()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black py-3 rounded-xl transition shadow-lg shadow-emerald-600/30">
+                    Main Lagi
+                </button>
+                <button onclick="closeModal()" class="px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rulesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-lg w-full p-6 text-left shadow-2xl relative">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-book text-emerald-400"></i> Aturan Ringkas Poin Tenis Meja
+                </h3>
+                <button onclick="closeRulesModal()" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-1">
+                <p><strong>1. Pemenang Set:</strong> Pemain yang pertama kali mencapai <strong>11 poin</strong> memenangkan set tersebut.</p>
+                <p><strong>2. Kondisi Deuce:</strong> Jika skor mencapai <strong>10 - 10</strong>, permainan berlanjut hingga salah satu pemain unggul <strong>2 poin</strong> (misal: 12-10, 13-11).</p>
+                <p><strong>3. Perantian Servis:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                        <li>Dalam kondisi normal, servis berpindah pemain setiap <strong>2 poin</strong>.</li>
+                        <li>Saat Deuce (10-10 ke atas), servis berpindah setiap <strong>1 poin</strong>.</li>
+                    </ul>
+                </p>
+                <p><strong>4. Format Set:</strong> Pertandingan umumnya dimainkan dalam sistem Best of 5 (pemain pertama memenangkan 3 set dialah pemenangnya).</p>
+                <p><strong>5. Pindah Sisi:</strong> Pemain berpindah sisi meja setiap pergantian set.</p>
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="closeRulesModal()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-5 py-2 rounded-xl transition">
+                    Saya Mengerti
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal (Replacing Alert/Confirm) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-center shadow-2xl">
+            <h3 id="confirmTitle" class="text-lg font-bold text-slate-100 mb-2">Konfirmasi</h3>
+            <p id="confirmMessage" class="text-xs sm:text-sm text-slate-300 mb-5">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+            <div class="flex gap-2 justify-center">
+                <button id="confirmYesBtn" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition">Ya, Lanjutkan</button>
+                <button onclick="closeConfirmModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        // Game State Variables
+        let matchFormat = 5; // Default Best of 5
+        let setsToWin = 3;   // Requires 3 sets to win
+        let currentSet = 1;
+
+        let players = [
+            { id: 1, name: "Pemain 1", score: 0, setsWon: 0, color: "rose" },
+            { id: 2, name: "Pemain 2", score: 0, setsWon: 0, color: "sky" }
+        ];
+
+        let currentServer = 0; // 0 for Player 1, 1 for Player 2
+        let initialServerSet = 0; // Who served first in the current set
+        let history = []; // Stack for undo feature
+        let isAudioEnabled = true;
+        let isGameOver = false;
+
+        // Web Audio API Audio Context Initializer
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Synthesize Sound Effects
+        function playSound(type) {
+            if (!isAudioEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                const now = ctx.currentTime;
+
+                if (type === 'score') {
+                    // Short ping sound
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'setWin') {
+                    // Arpeggio fanfare for set win
+                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    notes.forEach((freq, idx) => {
+                        const noteOsc = ctx.createOscillator();
+                        const noteGain = ctx.createGain();
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(ctx.destination);
+                        
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        noteGain.gain.setValueAtTime(0.2, now + idx * 0.1);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.25);
+                        
+                        noteOsc.start(now + idx * 0.1);
+                        noteOsc.stop(now + idx * 0.1 + 0.25);
+                    });
+                } else if (type === 'matchWin') {
+                    // Match winning fanfare
+                    const notes = [440, 554.37, 659.25, 880];
+                    notes.forEach((freq, idx) => {
+                        const noteOsc = ctx.createOscillator();
+                        const noteGain = ctx.createGain();
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(ctx.destination);
+                        
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        noteGain.gain.setValueAtTime(0.3, now + idx * 0.12);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.4);
+                        
+                        noteOsc.start(now + idx * 0.12);
+                        noteOsc.stop(now + idx * 0.12 + 0.4);
+                    });
+                } else if (type === 'undo') {
+                    // Low tone for undo
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(250, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+            } catch(e) {
+                console.log("Audio playback error:", e);
+            }
+        }
+
+        // Initialize App
+        window.onload = function() {
+            renderSetBadges();
+            updateDisplay();
+        };
+
+        // Adjust Match Format (Best of 3, 5, 7)
+        function changeMatchFormat(val) {
+            matchFormat = parseInt(val);
+            setsToWin = Math.ceil(matchFormat / 2);
+            document.getElementById('targetInfo').innerText = `Target Win: ${setsToWin} Set`;
+            renderSetBadges();
+        }
+
+        // Toggle Audio On/Off
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            const icon = document.getElementById('audioIcon');
+            const btn = document.getElementById('audioBtn');
+            if (isAudioEnabled) {
+                icon.className = "fa-solid fa-volume-high text-emerald-400";
+                btn.classList.remove('opacity-60');
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-rose-400";
+                btn.classList.add('opacity-60');
+            }
+        }
+
+        // Update player names from inputs
+        function updatePlayerNames() {
+            players[0].name = document.getElementById('p1Name').value.trim() || "Pemain 1";
+            players[1].name = document.getElementById('p2Name').value.trim() || "Pemain 2";
+            renderHistoryLog();
+        }
+
+        // Main Score Adjustment Logic
+        function adjustScore(playerNumber, delta) {
+            if (isGameOver) return;
+
+            const playerIndex = playerNumber - 1;
+            const targetPlayer = players[playerIndex];
+
+            // Prevent negative score
+            if (delta < 0 && targetPlayer.score <= 0) return;
+
+            // Save state for undo
+            saveStateToHistory();
+
+            if (delta > 0) {
+                targetPlayer.score += 1;
+                playSound('score');
+            } else {
+                targetPlayer.score -= 1;
+                playSound('undo');
+            }
+
+            // Recalculate service indicator
+            calculateService();
+
+            // Check if Set Completed
+            checkSetWinner();
+
+            updateDisplay();
+        }
+
+        // Service Calculation Logic (ITTF Rules)
+        function calculateService() {
+            const totalPoints = players[0].score + players[1].score;
+            const isDeuce = players[0].score >= 10 && players[1].score >= 10;
+
+            if (isDeuce) {
+                // In Deuce, serve alternates every 1 point
+                const pointsInDeuce = totalPoints - 20;
+                currentServer = (initialServerSet + pointsInDeuce) % 2;
+            } else {
+                // Standard mode: serve alternates every 2 points
+                const serveSwitches = Math.floor(totalPoints / 2);
+                currentServer = (initialServerSet + serveSwitches) % 2;
+            }
+        }
+
+        // Check if a player won the set
+        function checkSetWinner() {
+            const p1Score = players[0].score;
+            const p2Score = players[1].score;
+
+            // Must reach at least 11 points and have at least 2 points lead
+            if ((p1Score >= 11 || p2Score >= 11) && Math.abs(p1Score - p2Score) >= 2) {
+                const winnerIndex = p1Score > p2Score ? 0 : 1;
+                players[winnerIndex].setsWon += 1;
+
+                // Check if Match Over
+                if (players[winnerIndex].setsWon >= setsToWin) {
+                    isGameOver = true;
+                    playSound('matchWin');
+                    showWinnerModal(players[winnerIndex].name, true);
+                } else {
+                    playSound('setWin');
+                    // Prepare Next Set
+                    currentSet += 1;
+                    // Rotate initial server for next set
+                    initialServerSet = (initialServerSet + 1) % 2;
+                    currentServer = initialServerSet;
+                    
+                    // Reset point scores for next set
+                    players[0].score = 0;
+                    players[1].score = 0;
+
+                    // Automatically switch sides on new set
+                    switchSidesData();
+                }
+            }
+        }
+
+        // Save current snapshot to history stack
+        function saveStateToHistory() {
+            const snap = {
+                scores: [players[0].score, players[1].score],
+                setsWon: [players[0].setsWon, players[1].setsWon],
+                currentSet: currentSet,
+                currentServer: currentServer,
+                initialServerSet: initialServerSet,
+                isGameOver: isGameOver
+            };
+            history.push(snap);
+            document.getElementById('undoBtn').disabled = false;
+        }
+
+        // Undo Last Action
+        function undoLastAction() {
+            if (history.length === 0) return;
+
+            const previousState = history.pop();
+            players[0].score = previousState.scores[0];
+            players[1].score = previousState.scores[1];
+            players[0].setsWon = previousState.setsWon[0];
+            players[1].setsWon = previousState.setsWon[1];
+            currentSet = previousState.currentSet;
+            currentServer = previousState.currentServer;
+            initialServerSet = previousState.initialServerSet;
+            isGameOver = previousState.isGameOver;
+
+            if (history.length === 0) {
+                document.getElementById('undoBtn').disabled = true;
+            }
+
+            playSound('undo');
+            updateDisplay();
+        }
+
+        // Switch Sides Functionality
+        function switchSides() {
+            saveStateToHistory();
+            switchSidesData();
+            updateDisplay();
+        }
+
+        function switchSidesData() {
+            // Swap array data
+            const tempPlayer = players[0];
+            players[0] = players[1];
+            players[1] = tempPlayer;
+
+            // Swap initial server state
+            initialServerSet = initialServerSet === 0 ? 1 : 0;
+            currentServer = currentServer === 0 ? 1 : 0;
+
+            // Swap inputs
+            const p1Input = document.getElementById('p1Name');
+            const p2Input = document.getElementById('p2Name');
+            const tempName = p1Input.value;
+            p1Input.value = p2Input.value;
+            p2Input.value = tempName;
+        }
+
+        // Randomize Initial Server (Coin Toss)
+        function randomizeServer() {
+            saveStateToHistory();
+            initialServerSet = Math.floor(Math.random() * 2);
+            currentServer = initialServerSet;
+            playSound('score');
+            updateDisplay();
+        }
+
+        // Update UI Display Elements
+        function updateDisplay() {
+            // Update Scores
+            document.getElementById('p1Score').innerText = players[0].score;
+            document.getElementById('p2Score').innerText = players[1].score;
+
+            // Update Service Indicators
+            if (currentServer === 0) {
+                document.getElementById('p1Service').classList.remove('hidden');
+                document.getElementById('p2Service').classList.add('hidden');
+            } else {
+                document.getElementById('p1Service').classList.add('hidden');
+                document.getElementById('p2Service').classList.remove('hidden');
+            }
+
+            // Deuce Status Check
+            const isDeuce = players[0].score >= 10 && players[1].score >= 10;
+            const deuceBadge = document.getElementById('deuceIndicator');
+            if (isDeuce) {
+                deuceBadge.classList.remove('hidden');
+            } else {
+                deuceBadge.classList.add('hidden');
+            }
+
+            // Set & Status Header
+            document.getElementById('setInfo').innerText = `SET ${currentSet}`;
+            
+            renderSetBadges();
+            renderHistoryLog();
+        }
+
+        // Render Win Set Badges
+        function renderSetBadges() {
+            for (let i = 0; i < 2; i++) {
+                const container = document.getElementById(`p${i+1}SetBadges`);
+                container.innerHTML = '';
+                for (let s = 0; s < setsToWin; s++) {
+                    const badge = document.createElement('div');
+                    if (s < players[i].setsWon) {
+                        badge.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-emerald-400 border border-emerald-300 shadow-sm flex items-center justify-center text-slate-950 text-[10px] font-black";
+                        badge.innerHTML = "✓";
+                    } else {
+                        badge.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-slate-700 border border-slate-600";
+                    }
+                    container.appendChild(badge);
+                }
+            }
+        }
+
+        // Render Log History Drawer
+        function renderHistoryLog() {
+            const logContainer = document.getElementById('historyLog');
+            const totalCount = document.getElementById('totalPointsCount');
+
+            if (history.length === 0) {
+                logContainer.innerHTML = '<span class="text-slate-500 italic text-xs py-1">Belum ada poin tercatat.</span>';
+                totalCount.innerText = "Total: 0 Relai";
+                return;
+            }
+
+            logContainer.innerHTML = '';
+            totalCount.innerText = `Total: ${history.length} Aksi`;
+
+            // Display last 10 entries in reverse
+            const recentHistory = [...history].reverse().slice(0, 15);
+
+            recentHistory.forEach((item, index) => {
+                const chip = document.createElement('div');
+                chip.className = "bg-slate-700/70 border border-slate-600 rounded-lg px-2.5 py-1 whitespace-nowrap text-slate-200 text-xs flex items-center gap-1.5 shrink-0";
+                chip.innerHTML = `
+                    <span class="text-slate-400 font-bold">#${history.length - index}</span>
+                    <span class="font-bold text-rose-400">${item.scores[0]}</span>
+                    <span class="text-slate-500">-</span>
+                    <span class="font-bold text-sky-400">${item.scores[1]}</span>
+                `;
+                logContainer.appendChild(chip);
+            });
+        }
+
+        // Winner Modal Dialog
+        function showWinnerModal(winnerName, isMatchWin) {
+            document.getElementById('winnerName').innerText = winnerName;
+            document.getElementById('winnerSubText').innerText = isMatchWin ? "Memenangkan Seluruh Pertandingan!" : "Memenangkan Set Ini!";
+            document.getElementById('finalScoreText').innerText = `Skor Set: ${players[0].name} (${players[0].setsWon}) - (${players[1].setsWon}) ${players[1].name}`;
+            document.getElementById('winnerModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('winnerModal').classList.add('hidden');
+        }
+
+        // Rules Modal Dialog
+        function openRulesModal() {
+            document.getElementById('rulesModal').classList.remove('hidden');
+        }
+
+        function closeRulesModal() {
+            document.getElementById('rulesModal').classList.add('hidden');
+        }
+
+        // Confirmation Modal Dialog
+        let confirmActionFn = null;
+
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            confirmActionFn = onConfirm;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmActionFn = null;
+        }
+
+        document.getElementById('confirmYesBtn').addEventListener('click', function() {
+            if (confirmActionFn) confirmActionFn();
+            closeConfirmModal();
+        });
+
+        function confirmResetAll() {
+            showConfirmModal(
+                "Reset Seluruh Pertandingan?",
+                "Semua skor set dan statistik akan dikembalikan ke awal.",
+                resetMatch
+            );
+        }
+
+        // Reset Entire Match
+        function resetMatch() {
+            players[0].score = 0;
+            players[0].setsWon = 0;
+            players[1].score = 0;
+            players[1].setsWon = 0;
+
+            currentSet = 1;
+            currentServer = 0;
+            initialServerSet = 0;
+            history = [];
+            isGameOver = false;
+
+            document.getElementById('undoBtn').disabled = true;
+            closeModal();
+            updateDisplay();
+        }
+    </script>
+</body>
+</html>
